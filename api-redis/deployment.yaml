@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-redis
+  namespace: api-sit1
+  labels:
+    application: api-redis-sit1
+    type: application
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      application: api-redis-sit1
+  template:
+    metadata:
+      labels:
+        application: api-redis-sit1
+        type: api
+        spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: registryContainer
+      volumes:
+        - name: api-redis
+          configMap:
+            name: api-redis
+      containers:
+        - name: api-redis
+          image: registryContainer/api-sit1/api-redis:latest
+          imagePullPolicy: Always
+          env:
+            - name: JAVA_ARGS
+              value: '--spring.config.location=/api-redis/application.properties'
+            - name: HTTP_PROXY
+            - name: HTTPS_PROXY
+            - name: http_proxy
+            - name: https_proxy
+            - name: NO_PROXY
+              value: '*.com'
+            - name: no_proxy
+              value: '*.com'
+            - name: JAVA_OPTS_APPEND
+              value: '-Dfile.encoding=UTF8'
+            - name: JAVA_OPTS
+              value: '-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector'
+          ports:
+            - protocol: TCP
+              containerPort: 8080
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 5000
+          volumeMounts:
+            - name: cache-volume
+              mountPath: /java.io.tmpdir
+            - name: api-redis
+              mountPath: /api-redis
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-redis-service
+  namespace: api-sit1
+spec:
+  selector:
+    application: api-redis-sit1
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
